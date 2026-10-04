@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Aventura de Halloween: Rescata el Globo</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background: #000000;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .pantalla {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .oculto { display: none !important; }
+        
+        /* CINEMÁTICA */
+        #pantalla-cinematica {
+            background: radial-gradient(circle, #1e1b4b 0%, #000000 100%);
+            cursor: pointer;
+        }
+        .texto-cinematica {
+            font-size: 18px;
+            color: #cbd5e1;
+            max-width: 320px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            min-height: 80px;
+        }
+        .btn-cinematica {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-weight: bold;
+            font-size: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        /* JUEGO PRINCIPAL */
+        #contenedor-juego {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000000;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        
+        .escenario-bosque {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            max-width: 480px;
+            background: #000000;
+            overflow: hidden;
+        }
+
+        /* Elementos basados exactamente en la distribución de la referencia */
+        .cielo-elementos {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding-right: 30px;
+            gap: 15px;
+            font-size: 24px;
+        }
+        .luna-llena {
+            position: absolute;
+            top: 10px;
+            right: 120px;
+            font-size: 45px;
+        }
+
+        /* Elementos interactivos y estáticos distribuidos según imagen */
+        .elemento-mapa {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .elemento-mapa:active { transform: scale(0.92); }
+
+        /* Panel de 7 casillas inferiores */
+        .panel-inferior {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.98);
+            border-top: 3px solid #334155;
+            padding: 10px 5px;
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            box-sizing: border-box;
+            z-index: 20;
+        }
+        .casilla {
+            width: 42px;
+            height: 42px;
+            background: #1e293b;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            position: relative;
+        }
+        .casilla.seleccionada {
+            border-color: #f59e0b;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+            background: #334155;
+        }
+
+        /* Burbuja de diálogo */
+        .burbuja-dialogo {
+            position: absolute;
+            background: white;
+            color: #0f172a;
+            padding: 7px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            max-width: 190px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            text-align: center;
+            z-index: 30;
+            transform: translateX(-50%);
+        }
+        .burbuja-dialogo::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0;
+            border-style: solid;
+            border-color: white transparent;
+            display: block;
+            width: 0;
+        }
+
+        /* Pantalla de Victoria */
+        #pantalla-victoria {
+            background: radial-gradient(circle, #064e3b 0%, #022c22 100%);
+        }
+        .codigo-recompensa {
+            background: #022c22;
+            border: 2px dashed #10b981;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 20px;
+            color: #34d399;
+            letter-spacing: 2px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CINEMÁTICA INICIAL -->
+    <div id="pantalla-cinematica" class="pantalla" onclick="avancarCinematica()">
+        <div style="font-size: 60px; margin-bottom: 20px;" id="icono-cinematica">👧🎈</div>
+        <div class="texto-cinematica" id="texto-cinematica">Había una vez una dulce niña que jugaba feliz con su brillante globo rojo...</div>
+        <button class="btn-cinematica" id="btn-cinematica-sig" onclick="event.stopPropagation(); avancarCinematica();">Continuar ▶</button>
+    </div>
+
+    <!-- JUEGO INTERACTIVO BASADO EN LA REFERENCIA VISUAL -->
+    <div id="contenedor-juego" class="oculto">
+        <div class="escenario-bosque" id="escenario" onclick="ocultarDialogoGeneral()">
+            
+            <!-- Cielo: Nubes y Luna Llena -->
+            <div style="position: absolute; top: 15px; right: 100px; font-size: 40px;">🌕</div>
+            <div style="position: absolute; top: 15px; right: 170px; font-size: 24px;">☁️</div>
+            <div style="position: absolute; top: 40px; right: 40px; font-size: 22px;">☁️</div>
+
+            <!-- FILA SUPERIOR / MEDIA DE ÁRBOLES Y OBJETOS -->
+            <!-- Árbol izquierdo simple -->
+            <div class="elemento-mapa" style="top: 130px; left: 35px; font-size: 45px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌳</div>
+            
+            <!-- Árbol principal con globo -->
+            <div class="elemento-mapa" style="top: 125px; left: 130px; font-size: 60px;" onclick="event.stopPropagation(); tocarArbolGlobo()">🌳</div>
+            <div class="elemento-mapa" id="globo-obj" style="top: 105px; left: 148px; font-size: 26px; animation: flotarGlobo 2s ease-in-out infinite alternate;" onclick="event.stopPropagation(); tocarGlobo()">🎈</div>
+
+            <!-- Árboles superiores derechos y centro -->
+            <div class="elemento-mapa" style="top: 130px; right: 150px; font-size: 35px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+            <div class="elemento-mapa" style="top: 130px; right: 40px; font-size: 45px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌳</div>
+
+            <!-- BLOQUE DE LÁPIDAS (Cementerio Izquierda) -->
+            <div class="elemento-mapa" style="top: 250px; left: 30px; font-size: 35px;" onclick="event.stopPropagation(); tocarLapidaComun()">🪦</div>
+            <div class="elemento-mapa" style="top: 250px; left: 90px; font-size: 35px; position: relative;" onclick="event.stopPropagation(); tocarLapidaDestornillador()">
+                🪦
+                <span id="destornillador-incrustado" style="position: absolute; top: 6px; left: 10px; font-size: 16px;">🪛</span>
+            </div>
+            <div class="elemento-mapa" style="top: 320px; left: 30px; font-size: 35px;" onclick="event.stopPropagation(); tocarLapidaComun()">🪦</div>
+            <div class="elemento-mapa" style="top: 320px; left: 90px; font-size: 35px;" onclick="event.stopPropagation(); tocarLapidaComun()">🪦</div>
+
+            <!-- NIÑA EN EL CENTRO -->
+            <div class="elemento-mapa" style="top: 235px; left: 50%; transform: translateX(-50%); font-size: 42px; z-index: 10;" onclick="event.stopPropagation(); mostrarConsejoNina()">👧</div>
+
+            <!-- ÁRBOLES Y HOJAS MEDIO-DERECHA -->
+            <div class="elemento-mapa" style="top: 260px; right: 150px; font-size: 35px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+            
+            <!-- Casita de la tumba (Derecha) -->
+            <div class="elemento-mapa" style="top: 260px; right: 35px; font-size: 45px;" onclick="event.stopPropagation(); tocarCasita()">🏚️</div>
+
+            <!-- Hojas / Montaña de hojas secas -->
+            <div class="elemento-mapa" style="top: 320px; left: 50%; transform: translateX(-50%); font-size: 38px;" id="hojas-obj" onclick="event.stopPropagation(); tocarHojas()">🍂</div>
+
+            <!-- Árboles inferiores -->
+            <div class="elemento-mapa" style="bottom: 80px; left: 55px; font-size: 38px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+            <div class="elemento-mapa" style="bottom: 90px; left: 175px; font-size: 38px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+            <div class="elemento-mapa" style="bottom: 50px; left: 240px; font-size: 32px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+            <div class="elemento-mapa" style="bottom: 70px; right: 140px; font-size: 38px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+            <div class="elemento-mapa" style="bottom: 80px; right: 35px; font-size: 38px;" onclick="event.stopPropagation(); tocarArbolNormal()">🌲</div>
+
+            <!-- Burbuja de diálogo dinámica posicionada cerca de la niña -->
+            <div class="burbuja-dialogo oculto" id="burbuja" style="top: 190px; left: 50%;"></div>
+        </div>
+
+        <!-- 7 Casillas del inventario inferior -->
+        <div class="panel-inferior" id="panel-inventario">
+            <div class="casilla" onclick="seleccionarCasilla(0)" id="slot-0"></div>
+            <div class="casilla" onclick="seleccionarCasilla(1)" id="slot-1"></div>
+            <div class="casilla" onclick="seleccionarCasilla(2)" id="slot-2"></div>
+            <div class="casilla" onclick="seleccionarCasilla(3)" id="slot-3"></div>
+            <div class="casilla" onclick="seleccionarCasilla(4)" id="slot-4"></div>
+            <div class="casilla" onclick="seleccionarCasilla(5)" id="slot-5"></div>
+            <div class="casilla" onclick="seleccionarCasilla(6)" id="slot-6"></div>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE VICTORIA -->
+    <div id="pantalla-victoria" class="pantalla oculto">
+        <div style="background: rgba(6, 78, 59, 0.9); border: 3px solid #059669; border-radius: 20px; padding: 25px; max-width: 320px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h1 style="color: #34d399; font-size: 22px; margin-top: 0;">🎉 ¡Ganaste!</h1>
+            <p style="color: #e2e8f0; font-size: 13px; margin-bottom: 10px;">Ahora toma tu premio y reclamalo mañana:</p>
+            <div style="font-size: 18px; font-weight: bold; color: #f59e0b; margin: 10px 0;">🎁 Huevo Jubilado</div>
+            <div class="codigo-recompensa" id="texto-codigo">10bt-X992</div>
+            <p style="color: #94a3b8; font-size: 11px;">Guarda este código generado exclusivamente para ti.</p>
+            <button class="btn-cinematica" style="margin-top: 15px; width: 100%;" onclick="location.reload()">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <style>
+        @keyframes flotarGlobo {
+            0% { transform: translateY(0) rotate(-3deg); }
+            100% { transform: translateY(-5px) rotate(3deg); }
+        }
+    </style>
+
+    <script>
+        // --- CINEMÁTICA ---
+        let pasoCinematica = 0;
+        const textosCinematica = [
+            "Había una vez una dulce niña que jugaba feliz con su brillante globo rojo...",
+            "De repente, una fuerte ráfaga de viento sopló en la noche de Halloween...",
+            "¡El globo se voló y quedó atrapado en lo alto de un árbol tenebroso del bosque!",
+            "¡Ayuda a la niña a buscar las herramientas correctas y recuperar su globo!"
+        ];
+
+        function avancarCinematica() {
+            pasoCinematica++;
+            if (pasoCinematica < textosCinematica.length) {
+                document.getElementById('texto-cinematica').innerText = textosCinematica[pasoCinematica];
+                if(pasoCinematica === 2) {
+                    document.getElementById('icono-cinematica').innerText = "💨🎈";
+                } else if(pasoCinematica === 3) {
+                    document.getElementById('icono-cinematica').innerText = "🌲👧🌲";
+                    document.getElementById('btn-cinematica-sig').innerText = "Comenzar Aventura 🚀";
+                }
+            } else {
+                document.getElementById('pantalla-cinematica').classList.add('oculto');
+                document.getElementById('contenedor-juego').classList.remove('oculto');
+                hablar("¡Oh no! Mi globo quedó atrapado... ¡Ayúdame a buscarlo!");
+            }
+        }
+
+        // --- ESTADOS DEL JUEGO ---
+        let inventario = [null, null, null, null, null, null, null];
+        let indiceSeleccionado = null;
+        let tapsHojas = 0;
+        let palaObtenida = false;
+        let martilloObtenido = false;
+        let destornilladorObtenido = false;
+        let tapsEscalera = 0;
+        let escaleraObtenida = false;
+
+        const pistas = [
+            "¡Busca bien entre las hojas del suelo, creo que vi algo brillante!",
+            "Usa la pala para cavar cerca de las tumbas y encontrar un martillo.",
+            "Usa el martillo para golpear la lápida donde está incrustado el destornillador.",
+            "Usa el destornillador en la casita para abrirla y sacar la escalera.",
+            "Lleva la escalera hasta el árbol para alcanzar mi globo, por favor."
+        ];
+        let indicePista = 0;
+
+        function hablar(texto) {
+            let burbuja = document.getElementById('burbuja');
+            burbuja.innerText = texto;
+            burbuja.classList.remove('oculto');
+        }
+
+        function ocultarDialogoGeneral() {
+            // Permite cerrar tocando el fondo si se desea
+        }
+
+        function mostrarConsejoNina() {
+            hablar(pistas[indicePista]);
+        }
+
+        // --- GESTIÓN DE INVENTARIO ---
+        function agregarItem(item) {
+            for(let i=0; i<inventario.length; i++) {
+                if(inventario[i] === null) {
+                    inventario[i] = item;
+                    actualizarInventarioUI();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function removerItem(itemEmoji) {
+            for(let i=0; i<inventario.length; i++) {
+                if(inventario[i] === itemEmoji) {
+                    inventario[i] = null;
+                    if(indiceSeleccionado === i) indiceSeleccionado = null;
+                    actualizarInventarioUI();
+                    break;
+                }
+            }
+        }
+
+        function actualizarInventarioUI() {
+            for(let i=0; i<7; i++) {
+                let slot = document.getElementById(`slot-${i}`);
+                slot.innerText = inventario[i] || "";
+                if(i === indiceSeleccionado) {
+                    slot.classList.add('seleccionada');
+                } else {
+                    slot.classList.remove('seleccionada');
+                }
+            }
+        }
+
+        function seleccionarCasilla(index) {
+            if(inventario[index]) {
+                indiceSeleccionado = index;
+                actualizarInventarioUI();
+            } else {
+                indiceSeleccionado = null;
+                actualizarInventarioUI();
+            }
+        }
+
+        // --- INTERACCIONES DE OBJETOS ---
+        function tocarGlobo() {
+            hablar("¡Es mi globo! ¡Lo quiero recuperar por favor!");
+        }
+
+        function tocarArbolNormal() {
+            let itemSel = indiceSeleccionado !== null ? inventario[indiceSeleccionado] : null;
+            if(itemSel === "🔨") {
+                hablar("¡Oye! No ataques al árbol con el martillo.");
+            } else if(itemSel === "🪛" || itemSel === "⛏️" || itemSel === "🪜") {
+                hablar("¡Ese no es el lugar para usar esta herramienta!");
+            } else {
+                hablar("Solo es un árbol normal del bosque de Halloween.");
+            }
+        }
+
+        function tocarHojas() {
+            tapsHojas++;
+            if(tapsHojas === 1) {
+                hablar("¡Ey! Me pareció ver algo brillante moviéndose entre las hojas...");
+            } else if(tapsHojas === 2) {
+                hablar("¡Sigue tocando las hojas para apartarlas por completo!");
+            } else if(tapsHojas === 3 && !palaObtenida) {
+                palaObtenida = true;
+                hablar("¡Encontré una pala! Ha sido añadida a tu inventario ⛏️.");
+                agregarItem("⛏️");
+                document.getElementById('hojas-obj').style.opacity = "0.3";
+                indicePista = 1;
+            } else {
+                hablar("Las hojas ya están despejadas.");
+            }
+        }
+
+        function tocarLapidaComun() {
+            let itemSel = indiceSeleccionado !== null ? inventario[indiceSeleccionado] : null;
+            if(itemSel === "⛏️") {
+                if(!martilloObtenido) {
+                    martilloObtenido = true;
+                    hablar("¡Has cavado con la pala y desenterraste un martillo mágico! 🔨");
+                    removerItem("⛏️");
+                    agregarItem("🔨");
+                    indicePista = 2;
+                } else {
+                    hablar("Ya cavaste en esta zona y encontraste el martillo.");
+                }
+            } else {
+                hablar("Es una fría lápida del cementerio. Quizás necesites cavar cerca con una herramienta.");
+            }
+        }
+
+        function tocarLapidaDestornillador() {
+            let itemSel = indiceSeleccionado !== null ? inventario[indiceSeleccionado] : null;
+
+            if(itemSel === "🔨") {
+                if(!destornilladorObtenido) {
+                    destornilladorObtenido = true;
+                    hablar("¡Rompiste la lápida con el martillo! El martillo se rompió, pero el destornillador quedó en tu inventario 🪛.");
+                    removerItem("🔨");
+                    document.getElementById('destornillador-incrustado').style.display = 'none';
+                    agregarItem("🪛");
+                    indicePista = 3;
+                } else {
+                    hablar("Ya conseguiste el destornillador de esta lápida.");
+                }
+            } else {
+                hablar("Aquí hay una lápida con un destornillador incrustado. Necesitas algo para romperla o extraerlo.");
+            }
+        }
+
+        function tocarCasita() {
+            let itemSel = indiceSeleccionado !== null ? inventario[indiceSeleccionado] : null;
+
+            if(itemSel === "🪛") {
+                tapsEscalera++;
+                if(tapsEscalera < 4) {
+                    hablar(`Desatornillando la escalera asegurada de la casa... (${tapsEscalera}/4)`);
+                } else if(tapsEscalera === 4 && !escaleraObtenida) {
+                    escaleraObtenida = true;
+                    hablar("¡Abriste la casa con el destornillador y sacaste la escalera! 🪜");
+                    removerItem("🪛");
+                    agregarItem("🪜");
